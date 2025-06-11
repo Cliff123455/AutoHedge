@@ -7,39 +7,44 @@ from requests_oauthlib import OAuth1Session
 # Load environment variables from .env file
 load_dotenv()
 
+# E-Trade Sandbox URL for paper trading
+BASE_URL = "https://etwssandbox.etrade.com/v1"  # Sandbox for paper trading
+# For production, use: "https://api.etrade.com/v1"
 
 class ETradeClient:
     """
     A client for interacting with the E*TRADE API to manage trades and accounts.
     """
 
-    # BASE_URL = "https://api.etrade.com/v1"  # Sandbox base URL
-    # For production, replace with "https://api.etrade.com/v1"
-    BASE_URL = "https://api.etrade.com/v1"
-
-    def __init__(self, account_id: str, production_url: str):
+    def __init__(self, account_id: str = None, use_sandbox: bool = True):
         """
         Initialize the E*TRADE client with OAuth credentials from environment variables.
+        
+        Args:
+            account_id: Your E-Trade account ID (optional, can be set via env var)
+            use_sandbox: Whether to use sandbox (paper trading) or production
         """
         self.consumer_key = os.getenv("ETRADE_CONSUMER_KEY")
         self.consumer_secret = os.getenv("ETRADE_CONSUMER_SECRET")
         self.oauth_token = os.getenv("ETRADE_OAUTH_TOKEN")
-        self.oauth_token_secret = os.getenv(
-            "ETRADE_OAUTH_TOKEN_SECRET"
-        )
-        self.account_id = account_id
+        self.oauth_token_secret = os.getenv("ETRADE_OAUTH_TOKEN_SECRET")
+        self.account_id = account_id or os.getenv("ETRADE_ACCOUNT_ID")
+        
+        # Set the appropriate base URL
+        if use_sandbox:
+            self.BASE_URL = "https://etwssandbox.etrade.com/v1"
+            logger.info("Using E-Trade Sandbox (Paper Trading)")
+        else:
+            self.BASE_URL = "https://api.etrade.com/v1"
+            logger.info("Using E-Trade Production")
 
-        if not all(
-            [
-                self.consumer_key,
-                self.consumer_secret,
-                self.oauth_token,
-                self.oauth_token_secret,
-            ]
-        ):
-            logger.error(
-                "E*TRADE credentials are not set in the environment variables."
-            )
+        if not all([
+            self.consumer_key,
+            self.consumer_secret,
+            self.oauth_token,
+            self.oauth_token_secret,
+        ]):
+            logger.error("E*TRADE credentials are not set in the environment variables.")
             raise EnvironmentError("Missing E*TRADE credentials.")
 
         self.oauth_session = OAuth1Session(
@@ -140,8 +145,7 @@ class ETradeClient:
 
 
 def get_acc_info():
-    client = ETradeClient(account_id=os.getenv("ETRADE_ACCOUNT_ID"))
-
+    client = ETradeClient()
     return client.get_account_info()
 
 
